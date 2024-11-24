@@ -25,6 +25,8 @@ var (
     DBUser     string
     DBPassword string
     DBName     string
+
+    Port string
 )
 
 func LoadConfig() {
@@ -33,6 +35,9 @@ func LoadConfig() {
     if err != nil {
         log.Fatalf("Error loading .env file: %v", err)
     }
+
+    // Port
+    Port = os.Getenv("PORT")
 
     // GitHub OAuth
     GitHubClientID = os.Getenv("GITHUB_CLIENT_ID")

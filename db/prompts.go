@@ -4,10 +4,10 @@ import (
     "fmt"
 )
 
-func SavePrompt(userID int, prompt string) error {
+func SavePrompt(userID interface{}, prompt string, response string) error {
     _, err := DB.Exec(
-        "INSERT INTO prompts (user_id, prompt) VALUES ($1, $2)",
-        userID, prompt,
+        "INSERT INTO prompts (user_id, prompt, response) VALUES ($1, $2, $3)",
+        userID, prompt, response,
     )
     if err != nil {
         return fmt.Errorf("failed to save prompt: %v", err)
