@@ -5,26 +5,37 @@ import (
 	"llm/config"
 	"llm/db"
     "llm/handlers"
+    "llm/logger"
+    "log/slog"
     "fmt"
-	"log"
 	"net/http"
-
+    "os"
 )
 
 func main() {
+    // Initialize logger with desired level
+	logger.InitLogger(slog.LevelDebug)
+
     // Load environment variables
     config.LoadConfig()
     
     // Connect to the database
     if err := db.Connect(); err != nil {
-        log.Fatalf("Error connecting to the database: %v", err)
-    }
+		logger.Logger.Error("Error connecting to the database", "error", err)
+        os.Exit(1)
+	}
+
     http.HandleFunc("/", handlers.FormHandler)
     http.HandleFunc("/api/prompt", handlers.PromptHandler)
 	http.HandleFunc("/auth/login", auth.LoginHandler)
     http.HandleFunc("/auth/callback", auth.CallbackHandler)
 
     address := fmt.Sprintf(":%s", config.Port)
-    log.Printf("Server started at http://localhost%s", address)
-    log.Fatal(http.ListenAndServe(address, nil))
+
+    logger.Logger.Info("Server is running", slog.String("address", address))
+
+    if err := http.ListenAndServe(address, nil); err != nil {
+		logger.Logger.Error("Server failed", "error", err)
+		os.Exit(1)
+	}
 }
