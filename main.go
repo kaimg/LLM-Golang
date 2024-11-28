@@ -28,6 +28,7 @@ func main() {
     http.HandleFunc("/", handlers.FormHandler)
     http.HandleFunc("/api/prompt", handlers.PromptHandler)
 	http.HandleFunc("/auth/login", auth.LoginHandler)
+    http.HandleFunc("/auth/logout", auth.LogoutHandler)
     http.HandleFunc("/auth/callback", auth.CallbackHandler)
 
     address := fmt.Sprintf(":%s", config.Port)

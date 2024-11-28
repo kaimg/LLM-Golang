@@ -9,6 +9,7 @@ import (
 )
 
 func FormHandler(w http.ResponseWriter, r *http.Request) {
+	// Load the template
 	tmplPath := filepath.Join("templates", "index.html")
 	tmpl, err := template.ParseFiles(tmplPath)
 	if err != nil {
@@ -16,9 +17,10 @@ func FormHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Retrieve the session
 	session, _ := config.SessionStore.Get(r, config.SessionName)
 	userID, ok := session.Values["user_id"]
-
+	// Default data structure to send to the template
 	data := struct {
 		LoggedIn  bool
 		Username  string
@@ -27,6 +29,7 @@ func FormHandler(w http.ResponseWriter, r *http.Request) {
 		LoggedIn: false,
 	}
 
+	// If the user is logged in, fetch their details from the database
 	if ok {
 		var username, avatarURL string
 		err := db.DB.QueryRow("SELECT username, avatar_url FROM users WHERE id = $1", userID).Scan(&username, &avatarURL)
@@ -37,5 +40,6 @@ func FormHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Execute the template with the user data
 	tmpl.Execute(w, data)
 }

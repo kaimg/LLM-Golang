@@ -3,6 +3,10 @@ package config
 import (
     "log"
     "os"
+
+    "github.com/markbates/goth"
+    "github.com/markbates/goth/gothic"
+    "github.com/markbates/goth/providers/github"
     "github.com/gorilla/sessions"
     "github.com/joho/godotenv"
 )
@@ -14,6 +18,8 @@ var (
     GitHubAuthURL      string
     GitHubTokenURL     string
     GitHubUserAPIURL   string
+    GitHubAPI          string
+    
     SessionStore       *sessions.CookieStore
     SessionName        string
 
@@ -46,9 +52,11 @@ func LoadConfig() {
     GitHubAuthURL = os.Getenv("GITHUB_AUTH_URL")
     GitHubTokenURL = os.Getenv("GITHUB_TOKEN_URL")
     GitHubUserAPIURL = os.Getenv("GITHUB_USER_API_URL")
+    GitHubAPI = os.Getenv("GITHUB_API")
 
     // Session
     SessionStore = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
+    gothic.Store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
     SessionName = "llm-session"
 
     // API Configuration
@@ -61,4 +69,9 @@ func LoadConfig() {
     DBUser = os.Getenv("DB_USER")
     DBPassword = os.Getenv("DB_PASSWORD")
     DBName = os.Getenv("DB_NAME")
+
+    // Initialize GitHub OAuth provider using goth
+    goth.UseProviders(
+        github.New(GitHubClientID, GitHubClientSecret, GitHubRedirectURL),
+    )
 }

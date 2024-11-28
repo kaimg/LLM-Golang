@@ -1,147 +1,141 @@
 package auth
 
 import (
-    "database/sql"
-    "encoding/json"
-    "fmt"
-    "io"
-    "llm/config"
-    "llm/db"
-    "net/http"
-    "net/url"
+	"fmt"
+	"llm/config"
+	"llm/db"
+	"net/http"
+	"encoding/json"
+    
+	"github.com/markbates/goth"
+	"github.com/markbates/goth/gothic"
 )
 
-// LoginHandler redirects the user to GitHub's OAuth2 login page
+// LoginHandler redirects the user to GitHub's OAuth2 login page using Goth
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
-    authURL := fmt.Sprintf("%s?client_id=%s&redirect_uri=%s&scope=user:email",
-        config.GitHubAuthURL,
-        config.GitHubClientID,
-        url.QueryEscape(config.GitHubRedirectURL),
-    )
-    http.Redirect(w, r, authURL, http.StatusFound)
+	// Redirect the user to GitHub login using Goth
+	gothic.BeginAuthHandler(w, r)
 }
 
-// CallbackHandler handles the GitHub OAuth2 callback
+// CallbackHandler handles the GitHub OAuth2 callback, stores user info in the session
 func CallbackHandler(w http.ResponseWriter, r *http.Request) {
-    code := r.URL.Query().Get("code")
-    if code == "" {
-        http.Error(w, "Code not provided", http.StatusBadRequest)
-        return
-    }
+	// Get user info from the callback request
+	user, err := gothic.CompleteUserAuth(w, r)
+	if err != nil {
+		http.Error(w, "Error completing user authentication", http.StatusInternalServerError)
+		return
+	}
+    // Fetch user's primary email from GitHub API
+	userEmail, err := getPrimaryEmail(config.GitHubAPI)
+	if err != nil {
+		http.Error(w, "Error fetching user email", http.StatusInternalServerError)
+		return
+	}
+    // Now user.Email should be available
+    fmt.Println("User Email:", userEmail)
+	// Insert or update the user in the database
+	userID, err := upsertUser(user, userEmail)
+	if err != nil {
+		http.Error(w, "Error saving user info", http.StatusInternalServerError)
+		return
+	}
 
-    token, err := exchangeCodeForToken(code)
-    if err != nil {
-        http.Error(w, "Failed to exchange code for token", http.StatusInternalServerError)
-        return
-    }
+	// Store the user ID in the session
+	session, _ := config.SessionStore.Get(r, config.SessionName)
+	session.Values["user_id"] = userID
+	session.Save(r, w)
 
-    userInfo, err := getUserInfo(token)
-    if err != nil {
-        http.Error(w, "Failed to fetch user info", http.StatusInternalServerError)
-        return
-    }
-
-    // Extract user data
-    username := userInfo["login"].(string)
-    githubID := fmt.Sprintf("%v", userInfo["id"])
-    email := ""
-    if userInfo["email"] != nil {
-        email = userInfo["email"].(string)
-    }
-    avatarURL := ""
-    if userInfo["avatar_url"] != nil {
-        avatarURL = userInfo["avatar_url"].(string)
-    }
-
-    // Insert or update user in the database
-    userID, err := upsertUser(username, githubID, email, avatarURL)
-    if err != nil {
-        http.Error(w, "Failed to save user", http.StatusInternalServerError)
-        return
-    }
-
-    // Store the user ID in the session
-    session, _ := config.SessionStore.Get(r, config.SessionName)
-    session.Values["user_id"] = userID
-    session.Save(r, w)
-
-    http.Redirect(w, r, "/", http.StatusFound)
+	// Redirect the user to the home page
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func exchangeCodeForToken(code string) (string, error) {
-    data := url.Values{}
-    data.Set("client_id", config.GitHubClientID)
-    data.Set("client_secret", config.GitHubClientSecret)
-    data.Set("code", code)
-    data.Set("redirect_uri", config.GitHubRedirectURL)
+// LogoutHandler handles user logout by deleting the session and redirecting to login page
+func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+    // Logout the user using Goth
+    gothic.Logout(w, r)
+	// Retrieve the session
+	session, _ := config.SessionStore.Get(r, config.SessionName)
 
-    resp, err := http.PostForm(config.GitHubTokenURL, data)
-    if err != nil {
-        return "", err
-    }
-    defer resp.Body.Close()
+    // Optionally, clear the session cookie to fully remove the session from the client
+	session.Options.MaxAge = -1 // This will expire the session cookie
+	session.Save(r, w)
 
-    body, err := io.ReadAll(resp.Body)
-    if err != nil {
-        return "", err
-    }
+	// Delete the "user_id" from the session
+	delete(session.Values, "user_id")
 
-    values, err := url.ParseQuery(string(body))
-    if err != nil {
-        return "", err
-    }
-
-    return values.Get("access_token"), nil
+	// Redirect to the login page (GitHub login flow)
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func getUserInfo(token string) (map[string]interface{}, error) {
-    req, err := http.NewRequest("GET", config.GitHubUserAPIURL, nil)
-    if err != nil {
-        return nil, err
-    }
-    req.Header.Set("Authorization", "Bearer "+token)
+// getPrimaryEmail fetches the primary email of the authenticated user from GitHub API
+func getPrimaryEmail(accessToken string) (string, error) {
+	// GitHub API endpoint to fetch email
+	emailAPIURL := "https://api.github.com/user/emails"
+	req, err := http.NewRequest("GET", emailAPIURL, nil)
+	if err != nil {
+		return "", err
+	}
 
-    client := &http.Client{}
-    resp, err := client.Do(req)
-    if err != nil {
-        return nil, err
-    }
-    defer resp.Body.Close()
+	req.Header.Set("Authorization", "token "+accessToken)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
 
-    var userInfo map[string]interface{}
-    if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
-        return nil, err
-    }
+	// Parse the response to get email
+	var emails []struct {
+		Email    string `json:"email"`
+		Primary  bool   `json:"primary"`
+		Verified bool   `json:"verified"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&emails)
+	if err != nil {
+		return "", err
+	}
 
-    return userInfo, nil
+	// Find the primary email
+	var userEmail string
+	for _, email := range emails {
+		if email.Primary {
+			userEmail = email.Email
+			break
+		}
+	}
+
+	if userEmail == "" {
+		return "", fmt.Errorf("primary email not found")
+	}
+
+	return userEmail, nil
+}
+// upsertUser inserts or updates the user in the database and returns the user ID
+func upsertUser(user goth.User, email string) (int, error) {
+	var userID int
+
+	// Check if the user already exists
+	err := db.DB.QueryRow("SELECT id FROM users WHERE github_id = $1", user.UserID).Scan(&userID)
+	if err != nil {
+		// Insert new user
+		err = db.DB.QueryRow(
+			"INSERT INTO users (username, github_id, email, avatar_url) VALUES ($1, $2, $3, $4) RETURNING id",
+			user.Name, user.UserID, email, user.AvatarURL,
+		).Scan(&userID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to insert user: %v", err)
+		}
+	} else {
+		// Update existing user
+		_, err = db.DB.Exec(
+			"UPDATE users SET username = $1, email = $2, avatar_url = $3 WHERE github_id = $4",
+			user.Name, email, user.AvatarURL, user.UserID,
+		)
+		if err != nil {
+			return 0, fmt.Errorf("failed to update user: %v", err)
+		}
+	}
+
+	return userID, nil
 }
 
-func upsertUser(username, githubID, email, avatarURL string) (int, error) {
-    var userID int
-
-    // Check if the user already exists
-    err := db.DB.QueryRow(
-        "SELECT id FROM users WHERE github_id = $1",
-        githubID,
-    ).Scan(&userID)
-
-    if err == sql.ErrNoRows {
-        // Insert new user
-        err = db.DB.QueryRow(
-            "INSERT INTO users (username, github_id, email, avatar_url) VALUES ($1, $2, $3, $4) RETURNING id",
-            username, githubID, email, avatarURL,
-        ).Scan(&userID)
-    } else if err == nil {
-        // Update existing user
-        _, err = db.DB.Exec(
-            "UPDATE users SET username = $1, email = $2, avatar_url = $3 WHERE github_id = $4",
-            username, email, avatarURL, githubID,
-        )
-    }
-
-    if err != nil {
-        return 0, fmt.Errorf("failed to upsert user: %v", err)
-    }
-
-    return userID, nil
-}
