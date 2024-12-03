@@ -11,7 +11,6 @@ import (
 	"net/http"
     "os"
 )
-
 func main() {
     // Initialize logger with desired level
 	logger.InitLogger(slog.LevelDebug)
@@ -31,6 +30,8 @@ func main() {
     http.HandleFunc("/auth/logout", auth.LogoutHandler)
     http.HandleFunc("/auth/callback", auth.CallbackHandler)
 
+    http.HandleFunc("/login", handlers.LoginPageHandler)
+    http.HandleFunc("/loginemail", auth.LoginViaEmailHandler)
     address := fmt.Sprintf(":%s", config.Port)
 
     logger.Logger.Info("Server is running", slog.String("address", address))

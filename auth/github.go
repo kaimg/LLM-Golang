@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"llm/config"
 	"llm/db"
+    "llm/logger"
 	"net/http"
 	"encoding/json"
-    
+    "log/slog"
+
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
 )
@@ -31,8 +33,6 @@ func CallbackHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error fetching user email", http.StatusInternalServerError)
 		return
 	}
-    // Now user.Email should be available
-    fmt.Println("User Email:", userEmail)
 	// Insert or update the user in the database
 	userID, err := upsertUser(user, userEmail)
 	if err != nil {
@@ -137,5 +137,27 @@ func upsertUser(user goth.User, email string) (int, error) {
 	}
 
 	return userID, nil
+}
+func LoginViaEmailHandler(w http.ResponseWriter, r *http.Request) {
+	var userID = 1
+	var email = r.FormValue("email")
+	err := db.DB.QueryRow("SELECT id FROM users WHERE email = $1", email).Scan(&userID)
+	if err != nil {
+        logger.Logger.Debug("DB", slog.String("userID", fmt.Sprintf("%v", err)))
+        logger.Logger.Debug("Email", slog.String("email", fmt.Sprintf("%v", email)))
+		//http.Error(w, "Error while reading DB for users", http.StatusInternalServerError)
+		return
+	}
+	if userID != 0 {
+		logger.Logger.Debug("Email Login", slog.String("userID", fmt.Sprintf("%v", userID)))
+		
+	}
+    // Retrieve the session
+	session, _ := config.SessionStore.Get(r, config.SessionName)
+    session.Values["user_id"] = userID
+	session.Save(r, w)
+
+	// Redirect the user to the home page
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 

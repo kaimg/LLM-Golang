@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - LLM Project</title>
+    <script src="https://unpkg.com/htmx.org@1.9.0"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet"/>
+    <style>
+        .btn-green {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-green:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body class="bg-light text-dark">
+    <div class="container mt-5">
+        <h2 class="mb-4 text-success">Login to LLM Project</h2>
+        <div class="card">
+            <div class="card-body">
+                <div>
+                    <div class="mb-3">
+                    <form action="/loginemail">
+                        <label for="email" class="form-label">Email Address</label>
+                        <input type="email" class="form-control" id="email" name="email" required placeholder="Enter your email">
+                    </div>
+                        <div class="mb-3 text-center">
+                            <button type="submit" class="btn btn-primary">Login</button>
+                        </div>
+                    </form>
+                </div>
+                <h5 class="card-title">Sign in with GitHub</h5>
+                <p class="card-text">To access the LLM project, please log in with your GitHub account.</p>
+                <a href="/auth/login?provider=github" class="btn btn-green">Login with GitHub</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

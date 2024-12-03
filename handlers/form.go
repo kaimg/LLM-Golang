@@ -39,7 +39,17 @@ func FormHandler(w http.ResponseWriter, r *http.Request) {
 			data.AvatarURL = avatarURL
 		}
 	}
-
 	// Execute the template with the user data
 	tmpl.Execute(w, data)
+}
+func LoginPageHandler(w http.ResponseWriter, r *http.Request) {
+	// Load the template
+	tmplPath := filepath.Join("templates", "login.html")
+	tmpl, err := template.ParseFiles(tmplPath)
+	if err != nil {
+		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		return
+	}
+    data := 0
+    tmpl.Execute(w, data)
 }
