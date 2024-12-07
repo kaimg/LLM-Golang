@@ -3,8 +3,16 @@ package utils
 import (
 	"regexp"
 	"strings"
-
+	"time"
 )
+
+func ParseDateAndTime(input string) (string) {
+    t, err := time.Parse(time.RFC3339, input)
+    if err != nil {
+        return "Undefined"
+    }
+    return t.Format("15:04 01/02/2006")
+}
 
 // formatMarkdown converts a Markdown-style response to basic HTML.
 func FormatMarkdown(text string) string {

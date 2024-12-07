@@ -32,6 +32,7 @@ func main() {
 
     http.HandleFunc("/login", handlers.LoginPageHandler)
     http.HandleFunc("/loginemail", auth.LoginViaEmailHandler)
+    http.HandleFunc("/profile", handlers.ProfilePageHandler)
     address := fmt.Sprintf(":%s", config.Port)
 
     logger.Logger.Info("Server is running", slog.String("address", address))

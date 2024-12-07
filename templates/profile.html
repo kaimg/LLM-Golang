@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile - LLM Project</title>
+    <script src="https://unpkg.com/htmx.org@1.9.0"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet"/>
+    <style>
+        .btn-green {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-green:hover {
+            background-color: #218838;
+        }
+        .avatar-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-left: 10px;
+        }
+        .profile-info {
+            margin-top: 20px;
+        }
+        .profile-section {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body class="bg-light text-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">LLM Project</a>
+            <div class="d-flex align-items-center">
+                {{if .LoggedIn}}
+                    <span class="navbar-text text-light me-3">Welcome, {{.Username}}!</span>
+                    <img src="{{.AvatarURL}}" alt="Avatar" class="me-2 avatar-circle">
+                    <a href="/auth/logout?provider=github" class="btn btn-outline-light">Logout</a>
+                {{else}}
+                    <a href="/auth/login?provider=github" class="btn btn-outline-light">Login with GitHub</a>
+                    <a href="/login" class="btn btn-outline-light">Login</a>
+                {{end}}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <!-- Profile Header -->
+        <div class="text-center">
+            <img src="{{.AvatarURL}}" alt="User Avatar" class="avatar-circle mb-3">
+            <h2>{{.Username}}</h2>
+            <p><strong>Joined:</strong> {{.CreatedAt}}</p>
+            <p class="text-muted">{{.Email}}</p>
+        </div>
+
+        <!-- Profile Details Section -->
+        <div class="profile-section">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Profile Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Email:</strong> {{.Email}}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Joined:</strong> {{.CreatedAt}}</p>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <a href="/profile/edit" class="btn btn-green">Edit Profile</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Change Password Section -->
+        <div class="profile-section">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Change Password</h5>
+                </div>
+                <div class="card-body">
+                    <form action="/profile/change-password" method="POST">
+                        <div class="mb-3">
+                            <label for="current-password" class="form-label">Current Password</label>
+                            <input type="password" class="form-control" id="current-password" name="current-password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new-password" class="form-label">New Password</label>
+                            <input type="password" class="form-control" id="new-password" name="new-password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm-password" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirm-password" name="confirm-password" required>
+                        </div>
+                        <button type="submit" class="btn btn-green">Change Password</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Account Section -->
+        <div class="profile-section">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Delete Account</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-danger">Deleting your account is permanent and cannot be undone.</p>
+                    <form action="/profile/delete" method="POST">
+                        <button type="submit" class="btn btn-danger">Delete Account</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
