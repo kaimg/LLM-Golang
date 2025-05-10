@@ -9,14 +9,35 @@ services:
     volumes:
       - ./templates:/app/templates
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    networks:
+      - llm-network
 
   db:
-    image: alpine
-    container_name: dummy-db
+    image: postgres:15
+    container_name: llm-db
     environment:
-      - DB_HOST=$(DB_HOST)
-      - DB_PORT=$(DB_PORT)
-      - DB_USER=$(DB_USER)
-      - DB_PASSWORD=$(DB_PASSWORD)
-      - DB_NAME=$(DB_NAME)
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/migrations.sql:/docker-entrypoint-initdb.d/1-migrations.sql
+    networks:
+      - llm-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  postgres_data:
+
+networks:
+  llm-network:
+    driver: bridge
