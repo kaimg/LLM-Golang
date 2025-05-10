@@ -38,10 +38,10 @@
             <a class="navbar-brand" href="/">LLM Project</a>
             <div class="d-flex align-items-center">
                 {{if .LoggedIn}}
-                    <span class="navbar-text text-light me-3">Welcome, {{.Username}}!</span>
+                    <span class="navbar-text text-light me-2">Welcome, {{.Username}}!</span>
                     <div>
                         <img src="{{.AvatarURL}}" alt="Avatar" class="me-2 avatar-circle">
-                        <a href="/profile" class="btn btn-green"></a>
+                        <a href="/profile" class="btn btn-green me-2">Profile</a>
                     </div>
                     <a href="/auth/logout?provider=github" class="btn btn-outline-light">Logout</a>
                 {{else}}
