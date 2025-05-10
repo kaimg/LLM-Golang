@@ -1,13 +1,13 @@
 package handlers
 
 import (
+	"fmt"
 	"html/template"
 	"llm/config"
 	"llm/db"
 	"llm/utils"
 	"llm/logger"
 	"log/slog"
-	"fmt"
 	"net/http"
 	"path/filepath"
 )
@@ -71,19 +71,20 @@ func ProfilePageHandler(w http.ResponseWriter, r *http.Request) {
 	userID, ok := session.Values["user_id"]
 	// Default data structure to send to the template
 	data := struct {
-		LoggedIn  bool
-		Username  string
-		AvatarURL string
-		Email	  string
-		CreatedAt string
+		LoggedIn    bool
+		Username    string
+		AvatarURL   string
+		Email       string
+		CreatedAt   string
+		GroqApiKey  string
 	}{
 		LoggedIn: false,
 	}
 
 	// If the user is logged in, fetch their details from the database
 	if ok {
-		var username, avatarURL, createdAt, email string
-		err := db.DB.QueryRow("SELECT username, avatar_url, created_at, email FROM users WHERE id = $1", userID).Scan(&username, &avatarURL, &createdAt, &email)
+		var username, avatarURL, createdAt, email, encryptedApiKey string
+		err := db.DB.QueryRow("SELECT username, avatar_url, created_at, email, groq_api_key FROM users WHERE id = $1", userID).Scan(&username, &avatarURL, &createdAt, &email, &encryptedApiKey)
 		createdAt = utils.ParseDateAndTime(createdAt)
 		if err == nil {
 			data.LoggedIn = true
@@ -91,13 +92,62 @@ func ProfilePageHandler(w http.ResponseWriter, r *http.Request) {
 			data.AvatarURL = avatarURL
 			data.Email = email
 			data.CreatedAt = createdAt
+			
+			// Decrypt the API key if it exists
+			if encryptedApiKey != "" {
+				if apiKey, err := utils.DecryptAPIKey(encryptedApiKey); err == nil {
+					data.GroqApiKey = apiKey
+					logger.Logger.Debug("API key decrypted successfully", 
+						slog.String("userID", fmt.Sprintf("%v", userID)),
+						slog.String("keyLength", fmt.Sprintf("%d", len(apiKey))))
+				} else {
+					logger.Logger.Error("Failed to decrypt API key", slog.String("error", err.Error()))
+				}
+			}
 		}
 	}
-	var prompt, response string
-	errDB := db.DB.QueryRow("SELECT prompt, response FROM propmts WHERE user_id = $1", userID).Scan(&prompt, &response)
-	
-	if errDB == nil {
-		logger.Logger.Debug("Prompt", slog.String("prompt", fmt.Sprintf("%v", prompt)))
-	}
 	tmpl.Execute(w, data)
+}
+
+func UpdateApiKeyHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get user ID from session
+	session, _ := config.SessionStore.Get(r, config.SessionName)
+	userID, ok := session.Values["user_id"]
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get the API key from the form
+	groqApiKey := r.FormValue("groq_api_key")
+	
+	// Encrypt the API key
+	encryptedKey, err := utils.EncryptAPIKey(groqApiKey)
+	if err != nil {
+		logger.Logger.Error("Failed to encrypt API key", slog.String("error", err.Error()))
+		http.Error(w, "Failed to update API key", http.StatusInternalServerError)
+		return
+	}
+
+	logger.Logger.Debug("Updating API key", 
+		slog.String("userID", fmt.Sprintf("%v", userID)),
+		slog.String("keyLength", fmt.Sprintf("%d", len(groqApiKey))))
+
+	// Update the encrypted API key in the database
+	_, err = db.DB.Exec("UPDATE users SET groq_api_key = $1 WHERE id = $2", encryptedKey, userID)
+	if err != nil {
+		logger.Logger.Error("Failed to update API key in database", slog.String("error", err.Error()))
+		http.Error(w, "Failed to update API key", http.StatusInternalServerError)
+		return
+	}
+
+	logger.Logger.Info("API key updated successfully", slog.String("userID", fmt.Sprintf("%v", userID)))
+
+	// Redirect back to the profile page
+	http.Redirect(w, r, "/profile", http.StatusSeeOther)
 }

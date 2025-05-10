@@ -9,17 +9,64 @@ import (
 	"net/http"
 	"log/slog"
 	"fmt"
+	"strings"
 )
 
 func PromptHandler(w http.ResponseWriter, r *http.Request) {
+	// Get user ID from session
+	session, _ := config.SessionStore.Get(r, config.SessionName)
+	userID, ok := session.Values["user_id"]
+	if !ok {
+		http.Error(w, "Please log in to use this feature", http.StatusUnauthorized)
+		return
+	}
+
+	// Get user's encrypted API key from database
+	var encryptedApiKey string
+	err := db.DB.QueryRow("SELECT groq_api_key FROM users WHERE id = $1", userID).Scan(&encryptedApiKey)
+	if err != nil {
+		logger.Logger.Error("Failed to get API key", slog.String("error", err.Error()))
+		http.Error(w, "Failed to get API key", http.StatusInternalServerError)
+		return
+	}
+
+	if encryptedApiKey == "" {
+		errorMsg := `<div class="alert alert-warning" role="alert">
+			Please set your GROQ API key in your <a href="/profile" class="alert-link">profile settings</a> to use this feature.
+		</div>`
+		w.Write([]byte(errorMsg))
+		return
+	}
+
+	// Decrypt the API key
+	apiKey, err := utils.DecryptAPIKey(encryptedApiKey)
+	if err != nil {
+		logger.Logger.Error("Failed to decrypt API key", slog.String("error", err.Error()))
+		http.Error(w, "Failed to decrypt API key", http.StatusInternalServerError)
+		return
+	}
+
 	prompt := r.FormValue("prompt")
 	logger.Logger.Info("Received prompt", slog.String("prompt", prompt))
 
-	// Make request to the API
-	response, err := api.MakeGroqRequest(prompt)
+	// Make request to the API using user's API key
+	response, err := api.MakeGroqRequest(prompt, apiKey)
 	if err != nil {
-		http.Error(w, "Failed to get response from API", http.StatusInternalServerError)
-		logger.Logger.Error("Failed to get response from API", slog.String("prompt", prompt), slog.String("error", err.Error()))
+		logger.Logger.Error("API request failed", 
+			slog.String("error", err.Error()),
+			slog.String("prompt", prompt))
+
+		var errorMsg string
+		if strings.Contains(err.Error(), "API returned status code 401") {
+			errorMsg = `<div class="alert alert-danger" role="alert">
+				Invalid API key. Please check your API key in your <a href="/profile" class="alert-link">profile settings</a>.
+			</div>`
+		} else {
+			errorMsg = `<div class="alert alert-danger" role="alert">
+				Failed to get response from API. Please try again later.
+			</div>`
+		}
+		w.Write([]byte(errorMsg))
 		return
 	}
 
@@ -31,12 +78,10 @@ func PromptHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(formattedResponse))
 
 	// Save the prompt and response
-	session, _ := config.SessionStore.Get(r, config.SessionName)
-	userID := session.Values["user_id"]
-	logger.Logger.Info("Saving prompt and response", slog.String("userID", fmt.Sprintf("%v", userID)))
-
 	if err := db.SavePrompt(userID, prompt, formattedResponse); err != nil {
-		logger.Logger.Error("Failed to save prompt and response", slog.String("userID", fmt.Sprintf("%v", userID)), slog.String("error", err.Error()))
+		logger.Logger.Error("Failed to save prompt and response", 
+			slog.String("userID", fmt.Sprintf("%v", userID)), 
+			slog.String("error", err.Error()))
 		return
 	}
 	logger.Logger.Info("Prompt and response saved successfully")

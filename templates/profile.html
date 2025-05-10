@@ -78,6 +78,31 @@
             </div>
         </div>
 
+        <!-- GROQ API Key Section -->
+        <div class="profile-section">
+            <div class="card">
+                <div class="card-header">
+                    <h5>GROQ API Key</h5>
+                </div>
+                <div class="card-body">
+                    <form action="/profile/update-api-key" method="POST">
+                        <div class="mb-3">
+                            <label for="groq-api-key" class="form-label">Your GROQ API Key</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="groq-api-key" name="groq_api_key" 
+                                    value="{{.GroqApiKey}}" placeholder="Enter your GROQ API key">
+                                <button class="btn btn-outline-secondary" type="button" onclick="toggleApiKeyVisibility()">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <small class="text-muted">Your API key is stored securely and used for making requests to GROQ.</small>
+                        </div>
+                        <button type="submit" class="btn btn-green">Update API Key</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- Change Password Section -->
         <div class="profile-section">
             <div class="card">
@@ -121,5 +146,15 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleApiKeyVisibility() {
+            const apiKeyInput = document.getElementById('groq-api-key');
+            if (apiKeyInput.type === 'password') {
+                apiKeyInput.type = 'text';
+            } else {
+                apiKeyInput.type = 'password';
+            }
+        }
+    </script>
 </body>
 </html>

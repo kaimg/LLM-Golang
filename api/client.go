@@ -27,12 +27,16 @@ type ResponsePayload struct {
     } `json:"choices"`
 }
 
-func MakeGroqRequest(prompt string) (string, error) {
+func MakeGroqRequest(prompt string, apiKey string) (string, error) {
+    if apiKey == "" {
+        return "", fmt.Errorf("no API key provided")
+    }
+
     payload := RequestPayload{
         Messages: []Message{
             {Role: "user", Content: prompt},
         },
-        Model: "llama3-8b-8192", // Model specified in your curl example
+        Model: "llama3-8b-8192",
     }
 
     jsonData, err := json.Marshal(payload)
@@ -46,7 +50,7 @@ func MakeGroqRequest(prompt string) (string, error) {
     }
 
     req.Header.Set("Content-Type", "application/json")
-    req.Header.Set("Authorization", "Bearer "+config.ApiKey)
+    req.Header.Set("Authorization", "Bearer "+apiKey)
 
     client := &http.Client{}
     resp, err := client.Do(req)
