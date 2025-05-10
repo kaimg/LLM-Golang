@@ -125,6 +125,11 @@ func SetupRoutes() {
 	routes := InitializeRoutes()
 	logger.Logger.Info("Setting up routes...")
 
+	// Serve static files
+	fs := http.FileServer(http.Dir("assets"))
+	http.Handle("/assets/", http.StripPrefix("/assets/", fs))
+	logger.Logger.Debug("Registered static file server for /assets/")
+
 	// Helper function to register routes
 	registerRoutes := func(routes []Route, groupName string) {
 		for _, route := range routes {

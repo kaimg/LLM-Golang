@@ -1,0 +1,32 @@
+:root {
+    --primary-color: #28a745;
+    --hover-color: #218838;
+}
+.btn-green {
+    background-color: var(--primary-color);
+    color: white;
+}
+.btn-green:hover {
+    background-color: var(--hover-color);
+}
+.loading-indicator {
+    display: none;
+}
+.loading-indicator.htmx-request {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-left: 10px;
+}
+.profile-info {
+    margin-top: 20px;
+}
+.profile-section {
+    margin-top: 30px;
+}
