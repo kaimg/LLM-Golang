@@ -6,6 +6,7 @@
     <title>User Profile - LLM Project</title>
     <script src="https://unpkg.com/htmx.org@1.9.0"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
     <link href="/assets/global.css" rel="stylesheet"/>
 </head>
 <body class="bg-light text-dark">
@@ -71,12 +72,38 @@
                                 <input type="password" class="form-control" id="groq-api-key" name="groq_api_key" 
                                     value="{{.GroqApiKey}}" placeholder="Enter your GROQ API key">
                                 <button class="btn btn-outline-secondary" type="button" onclick="toggleApiKeyVisibility()">
-                                    <i class="bi bi-eye"></i>
+                                    <i class="bi bi-eye" id="toggleIcon"></i>
                                 </button>
                             </div>
                             <small class="text-muted">Your API key is stored securely and used for making requests to GROQ.</small>
                         </div>
                         <button type="submit" class="btn btn-green">Update API Key</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Default Model Section -->
+        <div class="profile-section">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Default Model Settings</h5>
+                </div>
+                <div class="card-body">
+                    <form action="/profile/update-default-model" method="POST">
+                        <div class="mb-3">
+                            <label for="default-model" class="form-label">Default Model</label>
+                            <select name="default_model" id="default-model" class="form-select">
+                                <option value="llama3-8b-8192" {{if eq .DefaultModel "llama3-8b-8192"}}selected{{end}}>llama3</option>
+                                <option value="deepseek-r1-distill-llama-70b" {{if eq .DefaultModel "deepseek-r1-distill-llama-70b"}}selected{{end}}>deepseek</option>
+                                <option value="qwen-qwq-32b" {{if eq .DefaultModel "qwen-qwq-32b"}}selected{{end}}>qwen</option>
+                                <option value="mistral-saba-24b" {{if eq .DefaultModel "mistral-saba-24b"}}selected{{end}}>mistral</option>
+                                <option value="compound-beta" {{if eq .DefaultModel "compound-beta"}}selected{{end}}>compound</option>
+                                <option value="gemma2-9b-it" {{if eq .DefaultModel "gemma2-9b-it"}}selected{{end}}>gemma2</option>
+                            </select>
+                            <small class="text-muted">This model will be pre-selected when you create new prompts.</small>
+                        </div>
+                        <button type="submit" class="btn btn-green">Update Default Model</button>
                     </form>
                 </div>
             </div>
@@ -128,10 +155,15 @@
     <script>
         function toggleApiKeyVisibility() {
             const apiKeyInput = document.getElementById('groq-api-key');
+            const toggleIcon = document.getElementById('toggleIcon');
             if (apiKeyInput.type === 'password') {
                 apiKeyInput.type = 'text';
+                toggleIcon.classList.remove('bi-eye');
+                toggleIcon.classList.add('bi-eye-slash');
             } else {
                 apiKeyInput.type = 'password';
+                toggleIcon.classList.remove('bi-eye-slash');
+                toggleIcon.classList.add('bi-eye');
             }
         }
     </script>

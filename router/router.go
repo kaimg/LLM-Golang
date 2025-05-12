@@ -98,6 +98,13 @@ func InitializeRoutes() Routes {
 				Protected:   true,
 				Description: "Update GROQ API key endpoint",
 			},
+			{
+				Path:        "/profile/update-default-model",
+				Handler:     handlers.UpdateDefaultModelHandler,
+				Method:      "POST",
+				Protected:   true,
+				Description: "Update default model endpoint",
+			},
 		},
 	}
 }

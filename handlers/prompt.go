@@ -47,10 +47,14 @@ func PromptHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	prompt := r.FormValue("prompt")
-	logger.Logger.Info("Received prompt", slog.String("prompt", prompt))
+	model := r.FormValue("model")
+	if model == "" {
+		model = "llama3-8b-8192" // Default model
+	}
+	logger.Logger.Info("Received prompt", slog.String("prompt", prompt), slog.String("model", model))
 
 	// Make request to the API using user's API key
-	response, err := api.MakeGroqRequest(prompt, apiKey)
+	response, err := api.MakeGroqRequest(prompt, apiKey, model)
 	if err != nil {
 		logger.Logger.Error("API request failed", 
 			slog.String("error", err.Error()),
@@ -78,7 +82,7 @@ func PromptHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(formattedResponse))
 
 	// Save the prompt and response
-	if err := db.SavePrompt(userID, prompt, formattedResponse); err != nil {
+	if err := db.SavePrompt(userID, prompt, formattedResponse, model); err != nil {
 		logger.Logger.Error("Failed to save prompt and response", 
 			slog.String("userID", fmt.Sprintf("%v", userID)), 
 			slog.String("error", err.Error()))

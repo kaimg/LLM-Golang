@@ -27,7 +27,7 @@ type ResponsePayload struct {
     } `json:"choices"`
 }
 
-func MakeGroqRequest(prompt string, apiKey string) (string, error) {
+func MakeGroqRequest(prompt string, apiKey string, model string) (string, error) {
     if apiKey == "" {
         return "", fmt.Errorf("no API key provided")
     }
@@ -36,7 +36,7 @@ func MakeGroqRequest(prompt string, apiKey string) (string, error) {
         Messages: []Message{
             {Role: "user", Content: prompt},
         },
-        Model: "llama3-8b-8192",
+        Model: model,
     }
 
     jsonData, err := json.Marshal(payload)
