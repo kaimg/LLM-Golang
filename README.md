@@ -58,5 +58,3 @@ docker-compose up --build
 ![Profile Page](images/ProfilePage.png)
 
 ---
-
-Thank you for using LLM-Golang! We hope you enjoy interacting with the LLM through our application. For any questions or contributions, feel free to reach out or submit a pull request.
